@@ -1,21 +1,17 @@
+import { Separator, input } from "@inquirer/prompts";
 import fs from "fs";
-import inquirer from "inquirer";
 
 const todaysDay = new Intl.DateTimeFormat("fr-FR", { day: "2-digit" }).format(
   Date.now()
 );
 
 const createDayDir = () => {
-  inquirer
-    .prompt([
+  input(
       {
-        type: "number",
-        name: "day",
         message: "Which day?",
         default: todaysDay,
-      },
-    ])
-    .then(async ({ day }: { day: number }) => {
+      })
+    .then(async (day) => {
       const todaysDay = day.toString().padStart(2, "0");
       const dirname = `${__dirname}/day${todaysDay}`;
 
@@ -23,7 +19,7 @@ const createDayDir = () => {
         console.log("Come back tomorrow 🌒");
       } else {
         console.log(`Starting day ${day} ☀️`);
-        console.log(new inquirer.Separator().line);
+        console.log(new Separator().separator);
 
         fs.mkdirSync(dirname, { recursive: true, mode: 0o755 });
         const files = {

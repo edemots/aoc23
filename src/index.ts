@@ -1,9 +1,9 @@
 import "module-alias/register";
 import os from "os";
-import inquirer from "inquirer";
 import { dirs } from "@utils/filesystem";
 import { capitalize, ints } from "@utils/string";
 import { tail } from "@utils/array";
+import { Separator, confirm, select } from "@inquirer/prompts";
 
 const usageToTotalUsageMS = (elapUsage: NodeJS.CpuUsage) => {
   const elapUserMS = elapUsage.user / 1000.0;
@@ -33,94 +33,68 @@ const ask = () => {
     value: dirName,
   }));
 
-  inquirer
-    .prompt([
-      {
-        type: "list",
-        name: "day",
-        message: "Which day?",
-        choices: days.reverse(),
-        default: 0,
-        pageSize: days.length / 2,
-      },
-    ])
-    .then(({ day }) => {
-      const dayDir = `${__dirname}/${day}`;
-      const dayFile = require(`${dayDir}`);
+  select({
+    message: "Which day?",
+    choices: days.reverse(),
+    pageSize: Math.ceil(days.length / 2),
+  }).then((day) => {
+    const dayDir = `${__dirname}/${day}`;
+    const dayFile = require(`${dayDir}`);
 
-      inquirer
-        .prompt([
-          {
-            type: "list",
-            name: "part",
-            message: "Which part?",
-            choices: [
-              { name: "Part 02", value: "part2" },
-              { name: "Part 01", value: "part1" },
-              new inquirer.Separator(),
-              { name: "Change day", value: "back" },
-            ],
-            default: 0,
-          },
-        ])
-        .then(async ({ part }: { part: string }) => {
-          if (part === "back") {
-            ask();
-          } else {
-            let example = false;
+    select({
+      message: "Which part?",
+      choices: [
+        { name: "Part 02", value: "part2" },
+        { name: "Part 01", value: "part1" },
+        new Separator(),
+        { name: "Change day", value: "back" },
+      ],
+    }).then(async (part) => {
+      if (part === "back") {
+        ask();
+      } else {
+        let example = false;
 
-            if ([14, 15, 20, 22].includes(tail(ints(day)))) {
-              example = (
-                await inquirer.prompt([
-                  {
-                    type: "confirm",
-                    name: "example",
-                    message: "Run example?",
-                    default: false,
-                  },
-                ])
-              ).example;
-            }
+        if ([14, 15, 20, 22].includes(tail(ints(day)))) {
+          example = await confirm({
+            message: "Run example?",
+            default: false,
+          });
+        }
 
-            const startTime = process.hrtime();
-            const startUsage = process.cpuUsage();
+        const startTime = process.hrtime();
+        const startUsage = process.cpuUsage();
 
-            const solution = dayFile[part](example);
+        const solution = dayFile[part](example);
 
-            const { elapTimeMS: took, cpuPercent: cpu } = perf(
-              startTime,
-              startUsage
-            );
-            const memUsageMB = bToMb(process.memoryUsage().heapUsed);
+        const { elapTimeMS: took, cpuPercent: cpu } = perf(
+          startTime,
+          startUsage
+        );
+        const memUsageMB = bToMb(process.memoryUsage().heapUsed);
 
-            console.log(
-              "\u001b[42m The solution is: \u001b[1m" +
-                solution +
-                "\u001b[22m" +
-                (part.endsWith("Example")
-                  ? " "
-                  : ` (took ${took.toFixed(1)} ms, avg cpu (${
-                      os.cpus().length
-                    }): ${cpu}%, avg mem: ${memUsageMB.toFixed(1)} MB) `) +
-                "\u001b[0m"
-            );
+        console.log(
+          "\u001b[42m The solution is: \u001b[1m" +
+            solution +
+            "\u001b[22m" +
+            (part.endsWith("Example")
+              ? " "
+              : ` (took ${took.toFixed(1)} ms, avg cpu (${
+                  os.cpus().length
+                }): ${cpu}%, avg mem: ${memUsageMB.toFixed(1)} MB) `) +
+            "\u001b[0m"
+        );
 
-            inquirer
-              .prompt([
-                {
-                  type: "confirm",
-                  name: "another",
-                  message: "Another? (Default: Yes)",
-                  default: true,
-                },
-              ])
-              .then(({ another }) => {
-                if (another) ask();
-                else console.log("Thank you for solving AOC 22! ✨");
-              });
-          }
+        confirm({
+          message: "Another? (Default: Yes)",
+          default: true,
+        }).then((another) => {
+          if (another) ask();
+          else console.log("Thank you for solving AOC 22! ✨");
         });
+      }
     });
+  });
 };
 
 if (require.main === module) {
